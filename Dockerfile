@@ -22,6 +22,7 @@ COPY --from=builder /app/bot .
 USER botuser
 
 ENV WORK_DIR=/app/data
+ENV TZ=Europe/Berlin
 
 RUN mkdir -p ${WORK_DIR}
 
