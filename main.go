@@ -25,7 +25,7 @@ func main() {
 	config := loadConfig()
 	token := config.Token
 	if token == "" {
-		slog.Error("missing DISCORD_TOKEN environment variable")
+		slog.Error("Discord token not set")
 		os.Exit(1)
 	}
 

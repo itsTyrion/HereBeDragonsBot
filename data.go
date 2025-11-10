@@ -37,7 +37,7 @@ func readFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, err
 		}
 		return nil, fmt.Errorf("read file %s: %w", path, err)
 	}
@@ -90,6 +90,10 @@ func saveState() error {
 func loadConfig() botConfig {
 	data, err := readFile(configFile)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			saveConfig(botConfig{})
+			return botConfig{}
+		}
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
@@ -101,4 +105,13 @@ func loadConfig() botConfig {
 	}
 
 	return config
+}
+
+func saveConfig(config botConfig) error {
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode config: %w", err)
+	}
+
+	return os.WriteFile(configFile, data, 0o644)
 }
