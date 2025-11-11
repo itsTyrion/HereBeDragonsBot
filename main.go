@@ -99,7 +99,8 @@ func messageCreate(e *events.MessageCreate) {
 				slog.Error("failed to persist state", "error", err)
 			}
 		case "help":
-			response = "d!ping, d!setchannel, d!help\nEine Person kann nicht zwei Nachrichten hintereinander senden."
+			response = "d!ping, d!setchannel, d!help, d!about, d!purge <Anzahl>\n" +
+				"Eine Person kann nicht zwei Nachrichten hintereinander senden."
 		case "about":
 			selfMember, _ := rest.GetUser(client.ID())
 			var m runtime.MemStats
@@ -157,6 +158,9 @@ func messageCreate(e *events.MessageCreate) {
 			if number == lastNumber+1 {
 				lastNumber = lastNumber + 1
 				lastPerson = e.Message.Author.ID
+				if err = rest.AddReaction(e.ChannelID, e.Message.ID, "✅"); err != nil {
+					slog.Error("failed to add reaction", "error", err)
+				}
 				if err := saveState(); err != nil {
 					slog.Warn("messageCreate: failed to persist state", "error", err)
 				}
