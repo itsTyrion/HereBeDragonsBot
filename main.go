@@ -105,14 +105,18 @@ func messageCreate(e *events.MessageCreate) {
 			selfMember, _ := rest.GetUser(client.ID())
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
+			uptime := time.Since(startTime)
+			uptimeFmt := fmt.Sprintf("%d:%02d:%02d:%02d",
+				int(uptime.Hours()/24), int(uptime.Hours())%24, int(uptime.Minutes())%60, int(uptime.Seconds())%60)
+
 			embed := discord.NewEmbedBuilder().
 				SetColor(0x9B4F96).
 				AddField("**Dev**: ", "itsTyrion (<@!265038515375570944>)", false).
 				AddField("**Ping**: ", fmt.Sprintf("%dms", e.Client().Gateway().Latency().Milliseconds()), false).
-				AddField("**Uptime**: ", time.Since(startTime).String(), false).
+				AddField("**Uptime**: ", uptimeFmt, false).
 				AddField("**RAM**: ", fmt.Sprintf("%dMB alloc/%dMB sys", m.HeapAlloc/1024/1024, m.HeapSys/1024/1024), false).
 				AddField("**Powered by**: ", runtime.Version()+", disgo and Deez Nuts", false).
-				SetFooter("Made (with love) in Germany", "https://cdn.discordapp.com/emojis/898752832063303791.webp").
+				SetFooter("Made (with love) in Germany", "https://itstyrion.de/random/MC-Heart.png").
 				SetAuthor("HereBeDragons", "https://youtu.be/qWNQUvIk954", *selfMember.AvatarURL()).
 				Build()
 			_, _ = rest.CreateMessage(e.ChannelID, discord.MessageCreate{Embeds: []discord.Embed{embed}})
