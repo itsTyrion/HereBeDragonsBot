@@ -158,24 +158,22 @@ func messageCreate(e *events.MessageCreate) {
 			return
 		}
 		// check if content is a number
-		if number, err := strconv.Atoi(content); err == nil {
-			if number == lastNumber+1 {
-				lastNumber = lastNumber + 1
-				lastPerson = e.Message.Author.ID
-				if err = rest.AddReaction(e.ChannelID, e.Message.ID, "✅"); err != nil {
-					slog.Error("failed to add reaction", "error", err)
-				}
-				if err := saveState(); err != nil {
-					slog.Warn("messageCreate: failed to persist state", "error", err)
-				}
-			} else {
-				slog.Info("messageCreate: number is incorrect")
-				lastNumber = 0
-				response = fmt.Sprintf("%s hat die Strähne unterbrochen. :(", e.Message.Author.Mention())
-				slog.Info("messageCreate: lastNumber", "lastNumber", lastNumber, "lastPerson", lastPerson)
-				if err := saveState(); err != nil {
-					slog.Warn("messageCreate: failed to persist state", "error", err)
-				}
+		if number, err := strconv.Atoi(content); err == nil && number == lastNumber+1 {
+			lastNumber = lastNumber + 1
+			lastPerson = e.Message.Author.ID
+			if err = rest.AddReaction(e.ChannelID, e.Message.ID, "✅"); err != nil {
+				slog.Error("failed to add reaction", "error", err)
+			}
+			if err := saveState(); err != nil {
+				slog.Warn("messageCreate: failed to persist state", "error", err)
+			}
+		} else {
+			slog.Info("messageCreate: content is not a number")
+			lastNumber = 0
+			response = fmt.Sprintf("%s hat die Strähne unterbrochen. :(", e.Message.Author.Mention())
+			slog.Info("messageCreate: lastNumber", "lastNumber", lastNumber, "lastPerson", lastPerson)
+			if err := saveState(); err != nil {
+				slog.Warn("messageCreate: failed to persist state", "error", err)
 			}
 		}
 	}
