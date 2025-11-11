@@ -1,0 +1,12 @@
+services:
+  here-be-dragons-bot:
+    image: here-be-dragons-bot
+    container_name: HereBeDragonsBot
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 32m
+    volumes:
+      - /srv/HereBeDragonsBot/data:/app/data:Z
