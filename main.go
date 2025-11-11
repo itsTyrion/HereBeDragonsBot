@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
@@ -70,6 +72,7 @@ var (
 	lastNumber int          = 0
 	channelID  snowflake.ID = 0
 	lastPerson snowflake.ID = 0
+	startTime  time.Time    = time.Now()
 )
 
 func messageCreate(e *events.MessageCreate) {
@@ -90,6 +93,23 @@ func messageCreate(e *events.MessageCreate) {
 			}
 		case "help":
 			response = "d!ping, d!setchannel, d!help\nEine Person kann nicht zwei Nachrichten hintereinander senden."
+		case "about":
+			selfMember, _ := e.Client().Rest().GetUser(e.Client().ID())
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			embed := discord.NewEmbedBuilder().
+				SetColor(0x9B4F96).
+				AddField("**Dev**: ", "itsTyrion (<@!265038515375570944>)", false).
+				AddField("**Ping**: ", fmt.Sprintf("%dms", e.Client().Gateway().Latency().Milliseconds()), false).
+				AddField("**Uptime**: ", time.Since(startTime).String(), false).
+				AddField("**RAM**: ", fmt.Sprintf("%dMB alloc/%dMB sys", m.HeapAlloc/1024/1024, m.HeapSys/1024/1024), false).
+				AddField("**Powered by**: ", runtime.Version()+", disgo and Deez Nuts", false).
+				SetFooter("Made (with love) in Germany", "https://cdn.discordapp.com/emojis/898752832063303791.webp").
+				SetAuthor("HereBeDragons", "https://youtu.be/qWNQUvIk954", *selfMember.AvatarURL()).
+				Build()
+			_, _ = e.Client().Rest().CreateMessage(e.ChannelID, discord.MessageCreate{
+				Embeds: []discord.Embed{embed},
+			})
 		default:
 			response = "Unbekannter Befehl. d!help"
 		}
