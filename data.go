@@ -91,7 +91,10 @@ func loadConfig() botConfig {
 	data, err := readFile(configFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			saveConfig(botConfig{})
+			if err := saveConfig(botConfig{}); err != nil {
+				slog.Error("failed to save default config", "error", err)
+				os.Exit(1)
+			}
 			return botConfig{}
 		}
 		slog.Error("failed to load config", "error", err)
