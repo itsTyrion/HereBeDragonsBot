@@ -42,7 +42,9 @@ func main() {
 		bot.WithCacheConfigOpts(
 			cache.WithCaches(cache.FlagGuilds, cache.FlagChannels, cache.FlagMessages),
 		),
-		bot.WithEventListenerFunc(messageCreate),
+		bot.WithEventListenerFunc(func(e *events.MessageCreate) {
+			go messageCreate(e)
+		}),
 		bot.WithEventListenerFunc(messageDelete),
 		bot.WithEventListenerFunc(func(e *events.Ready) {
 			slog.Info("Ready!", "user", e.User.Username, "id", e.User.ID)
@@ -79,10 +81,15 @@ func messageCreate(e *events.MessageCreate) {
 	if e.Message.Author.Bot {
 		return
 	}
+	client := e.Client()
+	rest := client.Rest()
 	content := e.Message.Content
 	var response string
 	if strings.HasPrefix(content, "d!") {
-		switch content[2:] {
+		raw := strings.Split(content, " ")
+		slog.Info("messageCreate: raw", "raw", raw)
+		args := raw[1:]
+		switch raw[0][2:] {
 		case "ping":
 			response = "pong"
 		case "setchannel":
@@ -94,7 +101,7 @@ func messageCreate(e *events.MessageCreate) {
 		case "help":
 			response = "d!ping, d!setchannel, d!help\nEine Person kann nicht zwei Nachrichten hintereinander senden."
 		case "about":
-			selfMember, _ := e.Client().Rest().GetUser(e.Client().ID())
+			selfMember, _ := rest.GetUser(client.ID())
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			embed := discord.NewEmbedBuilder().
@@ -107,9 +114,37 @@ func messageCreate(e *events.MessageCreate) {
 				SetFooter("Made (with love) in Germany", "https://cdn.discordapp.com/emojis/898752832063303791.webp").
 				SetAuthor("HereBeDragons", "https://youtu.be/qWNQUvIk954", *selfMember.AvatarURL()).
 				Build()
-			_, _ = e.Client().Rest().CreateMessage(e.ChannelID, discord.MessageCreate{
-				Embeds: []discord.Embed{embed},
-			})
+			_, _ = rest.CreateMessage(e.ChannelID, discord.MessageCreate{Embeds: []discord.Embed{embed}})
+		case "purge":
+			if len(args) == 0 {
+				response = "Bitte gib eine Anzahl an Nachrichten an."
+				return
+			}
+			if number, err := strconv.Atoi(args[0]); err == nil {
+				if number < 1 || number > 100 {
+					response = "Bitte gib zwischen 1 und 100 an."
+					return
+				}
+				if err = rest.AddReaction(e.ChannelID, e.Message.ID, "⏳"); err != nil {
+					slog.Error("failed to add reaction", "error", err)
+				}
+				if page, err := rest.GetMessages(e.ChannelID, 0, e.Message.ID, 0, number); err == nil {
+					messageIDs := make([]snowflake.ID, 0, len(page))
+					for _, msg := range page {
+						messageIDs = append(messageIDs, msg.ID)
+					}
+					if err := rest.BulkDeleteMessages(e.ChannelID, messageIDs); err != nil {
+						slog.Error("failed to purge messages", "error", err)
+						response = "Fehler beim Löschen der Nachrichten: " + err.Error()
+					} else {
+						rest.RemoveOwnReaction(e.ChannelID, e.Message.ID, "⏳")
+						rest.AddReaction(e.ChannelID, e.Message.ID, "✅")
+					}
+				} else {
+					slog.Error("failed to get messages", "error", err)
+					response = "Fehler beim Löschen der Nachrichten: " + err.Error()
+				}
+			}
 		default:
 			response = "Unbekannter Befehl. d!help"
 		}
@@ -123,20 +158,22 @@ func messageCreate(e *events.MessageCreate) {
 				lastNumber = lastNumber + 1
 				lastPerson = e.Message.Author.ID
 				if err := saveState(); err != nil {
-					slog.Warn("failed to persist state", "error", err)
+					slog.Warn("messageCreate: failed to persist state", "error", err)
 				}
 			} else {
+				slog.Info("messageCreate: number is incorrect")
 				lastNumber = 0
 				response = fmt.Sprintf("%s hat die Strähne unterbrochen. :(", e.Message.Author.Mention())
+				slog.Info("messageCreate: lastNumber", "lastNumber", lastNumber, "lastPerson", lastPerson)
 				if err := saveState(); err != nil {
-					slog.Warn("failed to persist state", "error", err)
+					slog.Warn("messageCreate: failed to persist state", "error", err)
 				}
 			}
 		}
 	}
 
 	if response != "" {
-		_, _ = e.Client().Rest().CreateMessage(e.ChannelID, discord.NewMessageCreateBuilder().SetContent(response).Build())
+		_, _ = client.Rest().CreateMessage(e.ChannelID, discord.MessageCreate{Content: response})
 	}
 }
 
@@ -145,9 +182,9 @@ func messageDelete(e *events.MessageDelete) {
 	if msg.Content == strconv.Itoa(lastNumber) {
 		_, _ = e.Client().Rest().CreateMessage(
 			channelID,
-			discord.NewMessageCreateBuilder().
-				SetContent(fmt.Sprintf("%s hat die letzte Nachricht gelöscht. Zählerstand: %d", msg.Author.Mention(), lastNumber)).
-				Build(),
+			discord.MessageCreate{
+				Content: fmt.Sprintf("%s hat die letzte Nachricht gelöscht. Zählerstand: %d", msg.Author.Mention(), lastNumber),
+			},
 		)
 	}
 }
