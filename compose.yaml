@@ -2,6 +2,8 @@ services:
   here-be-dragons-bot:
     image: here-be-dragons-bot
     container_name: HereBeDragonsBot
+    pull_policy: never
+    build: .
     restart: unless-stopped
     deploy:
       resources:
