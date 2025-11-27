@@ -20,7 +20,7 @@ var (
 	botStartTime       time.Time    = time.Now()
 )
 
-func messageCreate(e *events.MessageCreate) {
+func messageCreate(e *events.MessageCreate, config botConfig) {
 	if e.Message.Author.Bot || e.GuildID == nil {
 		return
 	}
@@ -95,7 +95,7 @@ func messageCreate(e *events.MessageCreate) {
 			}
 		case "memberlist":
 			if client.Caches().MemberPermissions(*e.Message.Member).Has(discord.PermissionAdministrator) {
-				updateMemberList(client, *e.GuildID)
+				updateMemberList(client, *e.GuildID, snowflake.ID(config.MemberListChannelID))
 				rest.AddReaction(e.ChannelID, e.Message.ID, "✅")
 			}
 		default:

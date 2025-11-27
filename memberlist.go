@@ -29,9 +29,8 @@ var divLeaderRoles = map[snowflake.ID]string{
 	snowflake.ID(1430925986395979776): "[Div-Leader] Redstone",
 }
 
-const memberListChannelID = 1443475483839955035
 
-func updateMemberList(client bot.Client, guildID snowflake.ID) {
+func updateMemberList(client bot.Client, guildID snowflake.ID, memberListChannelID snowflake.ID) {
 	rest := client.Rest()
 	messageID := snowflake.ID(0)
 	if messages, err := rest.GetMessages(memberListChannelID, 0, 0, 0, 20); err == nil && len(messages) > 0 {

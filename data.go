@@ -18,7 +18,8 @@ type botState struct {
 }
 
 type botConfig struct {
-	Token string `json:"token"`
+	Token               string `json:"token"`
+	MemberListChannelID uint64 `json:"memberListChannelID,string"`
 }
 
 func initData() {

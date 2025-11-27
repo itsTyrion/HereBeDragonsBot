@@ -12,6 +12,7 @@ import (
 	"github.com/disgoorg/disgo/cache"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/snowflake/v2"
 )
 
 func main() {
@@ -42,14 +43,14 @@ func main() {
 			cache.WithCaches(cache.FlagGuilds, cache.FlagChannels, cache.FlagMessages, cache.FlagMembers, cache.FlagRoles),
 		),
 		bot.WithEventListenerFunc(func(e *events.MessageCreate) {
-			go messageCreate(e)
+			go messageCreate(e, config)
 		}),
 		bot.WithEventListenerFunc(messageDelete),
 		bot.WithEventListenerFunc(func(e *events.Ready) {
 			slog.Info("Ready!", "user", e.User.Username, "id", e.User.ID)
 		}),
 		bot.WithEventListenerFunc(func(e *events.GuildReady) {
-			go updateMemberList(e.Client(), e.GuildID)
+			go updateMemberList(e.Client(), e.GuildID, snowflake.ID(config.MemberListChannelID))
 		}),
 	)
 	if err != nil {
