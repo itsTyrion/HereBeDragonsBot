@@ -55,18 +55,18 @@ func loadState() error {
 		return fmt.Errorf("decode state: %w", err)
 	}
 
-	lastNumber = state.LastNumber
+	previousCounter = state.LastNumber
 
 	if id, err := snowflake.Parse(state.ChannelID); err != nil {
 		return fmt.Errorf("parse channel id: %w", err)
 	} else {
-		channelID = id
+		countingChannelID = id
 	}
 
 	if id, err := snowflake.Parse(state.LastPerson); err != nil {
 		return fmt.Errorf("parse lastPerson id: %w", err)
 	} else {
-		lastPerson = id
+		lastPersonCounting = id
 	}
 
 	return nil
@@ -74,9 +74,9 @@ func loadState() error {
 
 func saveState() error {
 	state := botState{
-		LastNumber: lastNumber,
-		ChannelID:  channelID.String(),
-		LastPerson: lastPerson.String(),
+		LastNumber: previousCounter,
+		ChannelID:  countingChannelID.String(),
+		LastPerson: lastPersonCounting.String(),
 	}
 
 	data, err := json.MarshalIndent(state, "", "  ")
