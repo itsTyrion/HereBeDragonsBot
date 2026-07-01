@@ -1,6 +1,8 @@
 package main
 
 import (
+	. "HereBeDragons/common"
+	"HereBeDragons/feat"
 	"context"
 	"log/slog"
 	"os"
@@ -17,15 +19,16 @@ import (
 
 func main() {
 	slog.Info("starting up...")
-	initData()
-	config := loadConfig()
+	InitData()
+	config := LoadConfig()
 	token := config.Token
 	if token == "" {
 		slog.Error("Discord token not set")
 		os.Exit(1)
 	}
 
-	if err := loadState(); err != nil {
+	state, err := LoadState()
+	if err != nil {
 		slog.Error("failed to load state", "error", err)
 	}
 
@@ -42,15 +45,12 @@ func main() {
 		bot.WithCacheConfigOpts(
 			cache.WithCaches(cache.FlagGuilds, cache.FlagChannels, cache.FlagMessages, cache.FlagMembers, cache.FlagRoles),
 		),
-		bot.WithEventListenerFunc(func(e *events.MessageCreate) {
-			go messageCreate(e, config)
-		}),
-		bot.WithEventListenerFunc(messageDelete),
+		bot.WithEventListeners(feat.InitEvents(*state, config)),
 		bot.WithEventListenerFunc(func(e *events.Ready) {
 			slog.Info("Ready!", "user", e.User.Username, "id", e.User.ID)
 		}),
 		bot.WithEventListenerFunc(func(e *events.GuildReady) {
-			go updateMemberList(e.Client(), e.GuildID, snowflake.ID(config.MemberListChannelID))
+			go feat.UpdateMemberList(e.Client(), e.GuildID, snowflake.ID(config.MemberListChannelID))
 		}),
 	)
 	if err != nil {

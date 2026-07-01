@@ -1,13 +1,13 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
-RUN go mod download && \
-    CGO_ENABLED=0 GOOS=linux go build -o bot .
+RUN go build -o bot .
 
-
-FROM alpine:3.22
+FROM alpine:3.24
 
 WORKDIR /app
 ENV TZ=Europe/Berlin

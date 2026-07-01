@@ -1,4 +1,4 @@
-package main
+package feat
 
 import (
 	"fmt"
@@ -30,8 +30,8 @@ var divLeaderRoles = map[snowflake.ID]string{
 }
 
 
-func updateMemberList(client bot.Client, guildID snowflake.ID, memberListChannelID snowflake.ID) {
-	rest := client.Rest()
+func UpdateMemberList(client *bot.Client, guildID snowflake.ID, memberListChannelID snowflake.ID) {
+	rest := client.Rest
 	messageID := snowflake.ID(0)
 	if messages, err := rest.GetMessages(memberListChannelID, 0, 0, 0, 20); err == nil && len(messages) > 0 {
 		if message, found := lo.Find(messages, func(msg discord.Message) bool {
@@ -54,13 +54,13 @@ func updateMemberList(client bot.Client, guildID snowflake.ID, memberListChannel
 
 	for _, hierarchyRoleID := range roleHierarchy {
 		roleMembers := make([]discord.Member, 0)
-		client.Caches().MemberCache().ForEach(func(groupID snowflake.ID, member discord.Member) {
+		for groupID, member := range client.Caches.MemberCache().All() {
 			if groupID == guildID && lo.Contains(member.RoleIDs, hierarchyRoleID) {
 				roleMembers = append(roleMembers, member)
 			}
-		})
+		}
 
-		sb.WriteString(fmt.Sprintf("----- <@&%s> -----\n\n", hierarchyRoleID))
+		fmt.Fprintf(&sb, "----- <@&%s> -----\n\n", hierarchyRoleID)
 
 		if len(roleMembers) == 0 {
 			sb.WriteString("Keine Mitglieder\n\n")
@@ -90,7 +90,7 @@ func updateMemberList(client bot.Client, guildID snowflake.ID, memberListChannel
 	sb.WriteString("-----")
 
 	content := sb.String()
-	_, err := client.Rest().UpdateMessage(memberListChannelID, messageID, discord.MessageUpdate{Content: &content})
+	_, err := client.Rest.UpdateMessage(memberListChannelID, messageID, discord.MessageUpdate{Content: &content})
 	if err != nil {
 		slog.Error("failed to update message", "error", err)
 	} else {

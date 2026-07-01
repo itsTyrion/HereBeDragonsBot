@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"encoding/json"
@@ -11,18 +11,18 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 )
 
-type botState struct {
-	LastNumber int    `json:"last_number"`
-	ChannelID  string `json:"channel_id"`
-	LastPerson string `json:"last_person"`
+type BotState struct {
+	LastNumber int          `json:"last_number"`
+	ChannelID  snowflake.ID `json:"channel_id"`
+	LastPerson snowflake.ID `json:"last_person"`
 }
 
-type botConfig struct {
-	Token               string `json:"token"`
-	MemberListChannelID uint64 `json:"memberListChannelID,string"`
+type BotConfig struct {
+	Token               string       `json:"token"`
+	MemberListChannelID snowflake.ID `json:"memberListChannelID"`
 }
 
-func initData() {
+func InitData() {
 	workDir := os.Getenv("WORK_DIR")
 	if workDir == "" {
 		workDir = "."
@@ -45,41 +45,21 @@ func readFile(path string) ([]byte, error) {
 	return data, nil
 }
 
-func loadState() error {
+func LoadState() (*BotState, error) {
 	data, err := readFile(stateFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var state botState
+	var state BotState
 	if err := json.Unmarshal(data, &state); err != nil {
-		return fmt.Errorf("decode state: %w", err)
+		return nil, fmt.Errorf("decode state: %w", err)
 	}
 
-	previousCounter = state.LastNumber
-
-	if id, err := snowflake.Parse(state.ChannelID); err != nil {
-		return fmt.Errorf("parse channel id: %w", err)
-	} else {
-		countingChannelID = id
-	}
-
-	if id, err := snowflake.Parse(state.LastPerson); err != nil {
-		return fmt.Errorf("parse lastPerson id: %w", err)
-	} else {
-		lastPersonCounting = id
-	}
-
-	return nil
+	return &state, nil
 }
 
-func saveState() error {
-	state := botState{
-		LastNumber: previousCounter,
-		ChannelID:  countingChannelID.String(),
-		LastPerson: lastPersonCounting.String(),
-	}
-
+func SaveState(state BotState) error {
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode state: %w", err)
@@ -88,21 +68,21 @@ func saveState() error {
 	return os.WriteFile(stateFile, data, 0o644)
 }
 
-func loadConfig() botConfig {
+func LoadConfig() BotConfig {
 	data, err := readFile(configFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if err := saveConfig(botConfig{}); err != nil {
+			if err := SaveConfig(BotConfig{}); err != nil {
 				slog.Error("failed to save default config", "error", err)
 				os.Exit(1)
 			}
-			return botConfig{}
+			return BotConfig{}
 		}
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
-	var config botConfig
+	var config BotConfig
 	if err := json.Unmarshal(data, &config); err != nil {
 		slog.Error("failed to decode config", "error", err)
 		os.Exit(1)
@@ -111,7 +91,7 @@ func loadConfig() botConfig {
 	return config
 }
 
-func saveConfig(config botConfig) error {
+func SaveConfig(config BotConfig) error {
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode config: %w", err)
