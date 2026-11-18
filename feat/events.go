@@ -22,7 +22,12 @@ func InitEvents(bs BotState, bc BotConfig) *events.ListenerAdapter {
 	return &events.ListenerAdapter{
 		OnMessageCreate: messageCreate,
 		OnMessageDelete: messageDelete,
+		OnReady:         ready,
 	}
+}
+
+func ready(e *events.Ready) {
+	readyChat(e)
 }
 
 func messageCreate(e *events.MessageCreate) {
@@ -34,10 +39,7 @@ func messageCreate(e *events.MessageCreate) {
 	var response string
 	if strings.HasPrefix(content, "d!") {
 		response = handleCommand(e)
-	} else {
-		if e.Message.Author.ID == state.LastPerson || state.ChannelID != e.Message.ChannelID {
-			return
-		}
+	} else if state.ChannelID == e.Message.ChannelID && e.Message.Author.ID != state.LastPerson {
 		// check if content is a number
 		if number, err := strconv.Atoi(content); err == nil && number == state.LastNumber+1 {
 			state.LastNumber = state.LastNumber + 1
@@ -57,6 +59,8 @@ func messageCreate(e *events.MessageCreate) {
 				slog.Warn("messageCreate: failed to persist state", "error", err)
 			}
 		}
+	} else {
+		handleChatInteract(e)
 	}
 
 	if response != "" {
@@ -65,12 +69,12 @@ func messageCreate(e *events.MessageCreate) {
 }
 
 func messageDelete(e *events.MessageDelete) {
-	msg := e.Message
-	if msg.Content == strconv.Itoa(state.LastNumber) {
+	if state.ChannelID == e.Message.ChannelID && e.Message.Content == strconv.Itoa(state.LastNumber) {
 		_, _ = e.Client().Rest.CreateMessage(
 			state.ChannelID,
 			discord.MessageCreate{
-				Content: fmt.Sprintf("%s hat die letzte Nachricht gelöscht. Zählerstand: %d", msg.Author.Mention(), state.LastNumber),
+				Content: fmt.Sprintf("%s hat die letzte Nachricht gelöscht. Zählerstand: %d",
+					e.Message.Author.Mention(), state.LastNumber),
 			},
 		)
 	}
